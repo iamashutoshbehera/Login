@@ -19,9 +19,9 @@ server:
 
 # For MySQL (uncomment and comment H2 config above)
 # spring:
-#   datasource:
+#   datasource: http://localhost:8080/h2-console/login.jsp
 #     url: jdbc:mysql://localhost:3306/login_db
-#     username: your_username
+#     username: jdbc:h2:mem:testdb
 #     password: your_password
 #     driver-class-name: com.mysql.cj.jdbc.Driver
 #   jpa:

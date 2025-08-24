@@ -12,6 +12,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState(''); // 'success' or 'error'
+  const [validationErrors, setValidationErrors] = useState({});
+  const [user, setUser] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -19,46 +21,68 @@ function App() {
       ...prev,
       [name]: value
     }));
+    
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    console.log('Login button clicked'); // Debug log
+    console.log('Form data:', formData); // Debug log
+    
     setIsLoading(true);
     setMessage('');
+    setValidationErrors({});
+
+    const requestData = {
+      email: formData.email,
+      password: formData.password
+    };
+
+    console.log('Making login API call with data:', requestData); // Debug log
 
     try {
-      // Simulate API call to backend
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('http://localhost:8080/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        })
+        body: JSON.stringify(requestData)
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setMessage('Login successful! Welcome back.');
+      console.log('Login response status:', response.status); // Debug log
+
+      const data = await response.json();
+      console.log('Login response data:', data); // Debug log
+
+      if (response.ok && data.success) {
+        setMessage(`Welcome back, ${data.user.fullName}!`);
         setMessageType('success');
+        setUser(data.user);
         console.log('Login successful:', data);
+        
+        // Reset form
+        setFormData({
+          email: '',
+          password: '',
+          confirmPassword: '',
+          firstName: '',
+          lastName: ''
+        });
       } else {
-        const errorData = await response.json();
-        setMessage(errorData.message || 'Login failed. Please check your credentials.');
+        setMessage(data.message || 'Login failed. Please check your credentials.');
         setMessageType('error');
       }
     } catch (error) {
-      // For demo purposes, simulate a successful login
-      console.log('Attempting login with:', { email: formData.email, password: formData.password });
-      if (formData.email && formData.password) {
-        setMessage('Demo: Login successful! (Backend not connected)');
-        setMessageType('success');
-      } else {
-        setMessage('Please fill in all fields.');
-        setMessageType('error');
-      }
+      console.error('Login error:', error);
+      setMessage('Unable to connect to server. Please try again later.');
+      setMessageType('error');
     } finally {
       setIsLoading(false);
     }
@@ -66,11 +90,16 @@ function App() {
 
   const handleSignup = async (e) => {
     e.preventDefault();
+    console.log('Signup button clicked'); // Debug log
+    console.log('Form data:', formData); // Debug log
+    
     setIsLoading(true);
     setMessage('');
+    setValidationErrors({});
 
-    // Validation
+    // Client-side validation
     if (formData.password !== formData.confirmPassword) {
+      console.log('Password mismatch error'); // Debug log
       setMessage('Passwords do not match.');
       setMessageType('error');
       setIsLoading(false);
@@ -78,67 +107,82 @@ function App() {
     }
 
     if (formData.password.length < 6) {
+      console.log('Password length error'); // Debug log
       setMessage('Password must be at least 6 characters long.');
       setMessageType('error');
       setIsLoading(false);
       return;
     }
 
+    // Check if all required fields are filled
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+      console.log('Missing required fields'); // Debug log
+      setMessage('Please fill in all required fields.');
+      setMessageType('error');
+      setIsLoading(false);
+      return;
+    }
+
+    const requestData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      password: formData.password,
+      confirmPassword: formData.confirmPassword
+    };
+
+    console.log('Making API call with data:', requestData); // Debug log
+
     try {
-      // Simulate API call to backend
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('http://localhost:8080/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          username: formData.firstName,
-        //   lastName: formData.lastName,
-          email: formData.email,
-          password: formData.password
-        })
+        body: JSON.stringify(requestData)
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setMessage('Account created successfully! Please login.');
+      console.log('Response status:', response.status); // Debug log
+      console.log('Response headers:', response.headers); // Debug log
+
+      const data = await response.json();
+      console.log('Response data:', data); // Debug log
+
+      if (response.ok && data.success) {
+        setMessage(`Account created successfully for ${data.user.fullName}! Please login.`);
         setMessageType('success');
         setTimeout(() => {
           setCurrentView('login');
-          setFormData({ email: formData.email, password: '', confirmPassword: '', firstName: '', lastName: '' });
+          setFormData({ 
+            email: formData.email, 
+            password: '', 
+            confirmPassword: '', 
+            firstName: '', 
+            lastName: '' 
+          });
+          setMessage('');
         }, 2000);
       } else {
-        const errorData = await response.json();
-        setMessage(errorData.message || 'Registration failed. Please try again.');
+        if (data.errors) {
+          // Handle field-specific validation errors
+          setValidationErrors(data.errors);
+          setMessage('Please fix the errors below.');
+        } else {
+          setMessage(data.message || 'Registration failed. Please try again.');
+        }
         setMessageType('error');
       }
     } catch (error) {
-      // For demo purposes, simulate successful registration
-      console.log('Attempting signup with:', {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        password: formData.password
-      });
-      
-      if (formData.email && formData.password && formData.firstName && formData.lastName) {
-        setMessage('Demo: Account created successfully! Switching to login...');
-        setMessageType('success');
-        setTimeout(() => {
-          setCurrentView('login');
-          setFormData({ email: formData.email, password: '', confirmPassword: '', firstName: '', lastName: '' });
-        }, 2000);
-      } else {
-        setMessage('Please fill in all fields.');
-        setMessageType('error');
-      }
+      console.error('Signup error:', error);
+      setMessage('Unable to connect to server. Please try again later.');
+      setMessageType('error');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const switchView = (view) => {
-    setCurrentView(view);
+  const handleLogout = () => {
+    setUser(null);
     setMessage('');
     setFormData({
       email: '',
@@ -147,7 +191,92 @@ function App() {
       firstName: '',
       lastName: ''
     });
+    setCurrentView('login');
   };
+
+  const switchView = (view) => {
+    setCurrentView(view);
+    setMessage('');
+    setValidationErrors({});
+    setFormData({
+      email: '',
+      password: '',
+      confirmPassword: '',
+      firstName: '',
+      lastName: ''
+    });
+  };
+
+  // If user is logged in, show dashboard
+  if (user) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(to bottom right, #eff6ff, #e0e7ff)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem'
+      }}>
+        <div style={{ width: '100%', maxWidth: '28rem' }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '0.75rem',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            padding: '2rem',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              margin: '0 auto 1rem',
+              width: '4rem',
+              height: '4rem',
+              backgroundColor: '#dcfce7',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <svg style={{ width: '2rem', height: '2rem', color: '#16a34a' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#111827', marginBottom: '0.5rem' }}>
+              Welcome, {user.fullName}!
+            </h1>
+            <p style={{ color: '#4b5563', marginBottom: '1.5rem' }}>
+              You have successfully logged in.
+            </p>
+            <div style={{ backgroundColor: '#f9fafb', borderRadius: '0.5rem', padding: '1rem', marginBottom: '1.5rem' }}>
+              <p style={{ fontSize: '0.875rem', color: '#374151', margin: '0.25rem 0' }}>
+                <strong>Email:</strong> {user.email}
+              </p>
+              <p style={{ fontSize: '0.875rem', color: '#374151', margin: '0.25rem 0' }}>
+                <strong>User ID:</strong> {user.id}
+              </p>
+            </div>
+            <button
+              onClick={handleLogout}
+              style={{
+                backgroundColor: '#ef4444',
+                color: 'white',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                fontSize: '1rem',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#dc2626'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#ef4444'}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -196,123 +325,77 @@ function App() {
           </div>
 
           {/* Forms */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {currentView === 'signup' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151',
-                    marginBottom: '0.5rem'
-                  }}>
-                    First Name
-                  </label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.5rem',
-                      fontSize: '1rem',
-                      transition: 'all 0.2s'
-                    }}
-                    placeholder="First name"
-                    required
-                  />
+          <div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {currentView === 'signup' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '0.5rem'
+                    }}>
+                      First Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: `1px solid ${validationErrors.firstName ? '#ef4444' : '#d1d5db'}`,
+                        borderRadius: '0.5rem',
+                        fontSize: '1rem',
+                        transition: 'all 0.2s'
+                      }}
+                      placeholder="First name"
+                      required
+                    />
+                    {validationErrors.firstName && (
+                      <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                        {validationErrors.firstName}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      color: '#374151',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: `1px solid ${validationErrors.lastName ? '#ef4444' : '#d1d5db'}`,
+                        borderRadius: '0.5rem',
+                        fontSize: '1rem',
+                        transition: 'all 0.2s'
+                      }}
+                      placeholder="Last name"
+                      required
+                    />
+                    {validationErrors.lastName && (
+                      <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                        {validationErrors.lastName}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.5rem',
-                      fontSize: '1rem',
-                      transition: 'all 0.2s'
-                    }}
-                    placeholder="Last name"
-                    required
-                  />
-                </div>
-              </div>
-            )}
+              )}
 
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '0.5rem'
-              }}>
-                Email Address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.5rem',
-                  fontSize: '1rem',
-                  transition: 'all 0.2s'
-                }}
-                placeholder="Enter your email"
-                required
-              />
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '0.5rem'
-              }}>
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.5rem',
-                  fontSize: '1rem',
-                  transition: 'all 0.2s'
-                }}
-                placeholder="Enter your password"
-                required
-              />
-            </div>
-
-            {currentView === 'signup' && (
               <div>
                 <label style={{
                   display: 'block',
@@ -321,125 +404,198 @@ function App() {
                   color: '#374151',
                   marginBottom: '0.5rem'
                 }}>
-                  Confirm Password
+                  Email Address *
                 </label>
                 <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
+                  type="email"
+                  name="email"
+                  value={formData.email}
                   onChange={handleInputChange}
                   style={{
                     width: '100%',
                     padding: '0.75rem',
-                    border: '1px solid #d1d5db',
+                    border: `1px solid ${validationErrors.email ? '#ef4444' : '#d1d5db'}`,
                     borderRadius: '0.5rem',
                     fontSize: '1rem',
                     transition: 'all 0.2s'
                   }}
-                  placeholder="Confirm your password"
+                  placeholder="Enter your email"
                   required
                 />
+                {validationErrors.email && (
+                  <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                    {validationErrors.email}
+                  </p>
+                )}
               </div>
-            )}
 
-            {/* Remember Me & Forgot Password (Login only) */}
-            {currentView === 'login' && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="checkbox"
-                    style={{
-                      width: '1rem',
-                      height: '1rem',
-                      color: '#4f46e5',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.25rem'
-                    }}
-                  />
-                  <label style={{
-                    marginLeft: '0.5rem',
-                    fontSize: '0.875rem',
-                    color: '#374151'
-                  }}>
-                    Remember me
-                  </label>
-                </div>
-                <button
-                  type="button"
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '0.5rem'
+                }}>
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
                   style={{
-                    fontSize: '0.875rem',
-                    color: '#4f46e5',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'color 0.2s'
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: `1px solid ${validationErrors.password ? '#ef4444' : '#d1d5db'}`,
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s'
                   }}
-                >
-                  Forgot password?
-                </button>
+                  placeholder="Enter your password"
+                  required
+                />
+                {validationErrors.password && (
+                  <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                    {validationErrors.password}
+                  </p>
+                )}
               </div>
-            )}
 
-            {/* Message Display */}
-            {message && (
-              <div style={{
-                padding: '0.75rem',
-                borderRadius: '0.5rem',
-                fontSize: '0.875rem',
-                backgroundColor: messageType === 'success' ? '#f0fdf4' : '#fef2f2',
-                color: messageType === 'success' ? '#166534' : '#991b1b',
-                border: `1px solid ${messageType === 'success' ? '#bbf7d0' : '#fecaca'}`
-              }}>
-                {message}
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="button"
-              onClick={currentView === 'login' ? handleLogin : handleSignup}
-              disabled={isLoading}
-              style={{
-                width: '100%',
-                backgroundColor: isLoading ? '#9ca3af' : '#4f46e5',
-                color: 'white',
-                padding: '0.75rem 1rem',
-                borderRadius: '0.5rem',
-                border: 'none',
-                fontSize: '1rem',
-                fontWeight: '500',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseOver={(e) => {
-                if (!isLoading) e.target.style.backgroundColor = '#4338ca';
-              }}
-              onMouseOut={(e) => {
-                if (!isLoading) e.target.style.backgroundColor = '#4f46e5';
-              }}
-            >
-              {isLoading ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg style={{
-                    animation: 'spin 1s linear infinite',
-                    marginRight: '0.75rem',
-                    width: '1.25rem',
-                    height: '1.25rem',
-                    color: 'white'
-                  }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {currentView === 'login' ? 'Signing in...' : 'Creating account...'}
+              {currentView === 'signup' && (
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Confirm Password *
+                  </label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: `1px solid ${validationErrors.confirmPassword ? '#ef4444' : '#d1d5db'}`,
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem',
+                      transition: 'all 0.2s'
+                    }}
+                    placeholder="Confirm your password"
+                    required
+                  />
+                  {validationErrors.confirmPassword && (
+                    <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                      {validationErrors.confirmPassword}
+                    </p>
+                  )}
                 </div>
-              ) : (
-                currentView === 'login' ? 'Sign In' : 'Create Account'
               )}
-            </button>
+
+              {/* Remember Me & Forgot Password (Login only) */}
+              {currentView === 'login' && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type="checkbox"
+                      style={{
+                        width: '1rem',
+                        height: '1rem',
+                        color: '#4f46e5',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.25rem'
+                      }}
+                    />
+                    <label style={{
+                      marginLeft: '0.5rem',
+                      fontSize: '0.875rem',
+                      color: '#374151'
+                    }}>
+                      Remember me
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: '#4f46e5',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'color 0.2s'
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              {/* Message Display */}
+              {message && (
+                <div style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                  backgroundColor: messageType === 'success' ? '#f0fdf4' : '#fef2f2',
+                  color: messageType === 'success' ? '#166534' : '#991b1b',
+                  border: `1px solid ${messageType === 'success' ? '#bbf7d0' : '#fecaca'}`
+                }}>
+                  {message}
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="button"
+                onClick={currentView === 'login' ? handleLogin : handleSignup}
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  backgroundColor: isLoading ? '#9ca3af' : '#4f46e5',
+                  color: 'white',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.5rem',
+                  border: 'none',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  if (!isLoading) e.target.style.backgroundColor = '#4338ca';
+                }}
+                onMouseOut={(e) => {
+                  if (!isLoading) e.target.style.backgroundColor = '#4f46e5';
+                }}
+              >
+                {isLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg style={{
+                      animation: 'spin 1s linear infinite',
+                      marginRight: '0.75rem',
+                      width: '1.25rem',
+                      height: '1.25rem',
+                      color: 'white'
+                    }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {currentView === 'login' ? 'Signing in...' : 'Creating account...'}
+                  </div>
+                ) : (
+                  currentView === 'login' ? 'Sign In' : 'Create Account'
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Social Login (Login only) */}
@@ -482,7 +638,7 @@ function App() {
                 gridTemplateColumns: '1fr 1fr',
                 gap: '0.75rem'
               }}>
-                <button style={{
+                <button type="button" style={{
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
@@ -508,7 +664,7 @@ function App() {
                   <span style={{ marginLeft: '0.5rem' }}>Google</span>
                 </button>
 
-                <button style={{
+                <button type="button" style={{
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
@@ -540,6 +696,7 @@ function App() {
           <p style={{ fontSize: '0.875rem', color: '#4b5563' }}>
             {currentView === 'login' ? "Don't have an account?" : "Already have an account?"}{' '}
             <button 
+              type="button"
               onClick={() => switchView(currentView === 'login' ? 'signup' : 'login')}
               style={{
                 fontWeight: '500',
@@ -557,6 +714,29 @@ function App() {
           </p>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        input:focus {
+          outline: none !important;
+          border-color: #4f46e5 !important;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+        }
+        
+        @media (max-width: 640px) {
+          [style*="grid-template-columns: 1fr 1fr"] {
+            display: block !important;
+          }
+          
+          [style*="grid-template-columns: 1fr 1fr"] > div:not(:last-child) {
+            margin-bottom: 1rem;
+          }
+        }
+      `}</style>
     </div>
   );
 }
