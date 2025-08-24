@@ -20,3 +20,11 @@ Frontend
 
 You can now view login-frontend in the browser.
 Local: http://localhost:3000
+
+
+
+MySQL:
+
+port : localhost 3306
+username : root
+root pw : Bhadrak@1997
