@@ -1,0 +1,22 @@
+Backend Execution: 
+
+> cd backend_project
+> mvn clean install
+> mvn spring-boot:run
+
+Validation : 
+
+Backend Server URL : http://localhost:8080/h2-console/login.do
+
+DB username : jdbc:h2:mem:testdb
+
+
+Frontend
+
+> cd frontend
+> mpn start
+
+
+
+You can now view login-frontend in the browser.
+Local: http://localhost:3000
