@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function App() {
   const [currentView, setCurrentView] = useState('login'); // 'login' or 'signup'
@@ -15,6 +15,24 @@ function App() {
   const [validationErrors, setValidationErrors] = useState({});
   const [user, setUser] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check for saved theme preference or default to false
+    const savedTheme = window.localStorage?.getItem('theme');
+    return savedTheme === 'dark';
+  });
+
+  // Update theme preference in memory when isDarkMode changes
+  useEffect(() => {
+    // Note: We store in a variable since localStorage isn't available in artifacts
+    // In a real app, this would persist the preference
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -233,38 +251,124 @@ function App() {
     </svg>
   );
 
-  // Common styles
+  const SunIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="5"/>
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+    </svg>
+  );
+
+  const MoonIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  );
+
+  // Theme-aware styles
+  const getThemeColors = () => {
+    if (isDarkMode) {
+      return {
+        background: 'linear-gradient(135deg, #1e1b4b, #312e81, #1f2937)',
+        cardBg: 'rgba(31, 41, 55, 0.9)',
+        cardBorder: '#374151',
+        textPrimary: '#f9fafb',
+        textSecondary: '#d1d5db',
+        inputBg: '#374151',
+        inputBorder: '#4b5563',
+        inputFocus: '#6366f1',
+        successBg: '#064e3b',
+        successText: '#6ee7b7',
+        successBorder: '#047857',
+        errorBg: '#7f1d1d',
+        errorText: '#fca5a5',
+        errorBorder: '#dc2626',
+        socialBg: '#374151',
+        socialBorder: '#4b5563',
+        socialHover: '#4b5563'
+      };
+    } else {
+      return {
+        background: 'linear-gradient(135deg, #f3e8ff, #fdf2f8, #fed7aa)',
+        cardBg: 'rgba(255, 255, 255, 0.9)',
+        cardBorder: '#e5e7eb',
+        textPrimary: '#111827',
+        textSecondary: '#6b7280',
+        inputBg: '#f9fafb',
+        inputBorder: '#e5e7eb',
+        inputFocus: '#4f46e5',
+        successBg: '#f0fdf4',
+        successText: '#166534',
+        successBorder: '#bbf7d0',
+        errorBg: '#fef2f2',
+        errorText: '#991b1b',
+        errorBorder: '#fecaca',
+        socialBg: 'white',
+        socialBorder: '#d1d5db',
+        socialHover: '#f9fafb'
+      };
+    }
+  };
+
+  const theme = getThemeColors();
+
+  // Common styles with theme support
   const containerStyle = {
     minHeight: '100vh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(135deg, #f3e8ff, #fdf2f8, #fed7aa)',
+    background: theme.background,
     padding: '24px',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    position: 'relative'
   };
 
   const cardStyle = {
     width: '100%',
     maxWidth: currentView === 'signup' ? '32rem' : '28rem',
     backdropFilter: 'blur(12px)',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    border: '1px solid #e5e7eb',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+    backgroundColor: theme.cardBg,
+    border: `1px solid ${theme.cardBorder}`,
+    boxShadow: isDarkMode 
+      ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' 
+      : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
     borderRadius: '16px',
     overflow: 'hidden',
     transform: isHovered ? 'scale(1.02)' : 'scale(1)',
     transition: 'transform 0.3s ease'
   };
 
+  const themeToggleStyle = {
+    position: 'absolute',
+    top: '24px',
+    right: '24px',
+    width: '48px',
+    height: '48px',
+    borderRadius: '50%',
+    backgroundColor: theme.cardBg,
+    border: `1px solid ${theme.cardBorder}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    backdropFilter: 'blur(12px)',
+    color: theme.textPrimary,
+    boxShadow: isDarkMode 
+      ? '0 10px 25px -5px rgba(0, 0, 0, 0.3)' 
+      : '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
+  };
+
   const inputContainerStyle = {
     display: 'flex',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: theme.inputBg,
     borderRadius: '12px',
     padding: '8px 12px',
-    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-    border: '1px solid #e5e7eb',
+    boxShadow: isDarkMode 
+      ? '0 1px 3px 0 rgba(0, 0, 0, 0.3)' 
+      : '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+    border: `1px solid ${theme.inputBorder}`,
     marginBottom: '16px'
   };
 
@@ -275,7 +379,8 @@ function App() {
     width: '100%',
     padding: '8px',
     fontSize: '14px',
-    fontFamily: 'inherit'
+    fontFamily: 'inherit',
+    color: theme.textPrimary
   };
 
   const buttonStyle = {
@@ -300,19 +405,30 @@ function App() {
     justifyContent: 'center',
     gap: '8px',
     padding: '10px 16px',
-    border: '1px solid #d1d5db',
+    border: `1px solid ${theme.socialBorder}`,
     borderRadius: '8px',
-    backgroundColor: 'white',
+    backgroundColor: theme.socialBg,
     cursor: 'pointer',
     transition: 'transform 0.2s ease, background-color 0.2s ease',
     fontSize: '14px',
-    fontFamily: 'inherit'
+    fontFamily: 'inherit',
+    color: theme.textPrimary
   };
 
   // If user is logged in, show dashboard
   if (user) {
     return (
       <div style={containerStyle}>
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleDarkMode}
+          style={themeToggleStyle}
+          onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'}
+          onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+        >
+          {isDarkMode ? <SunIcon /> : <MoonIcon />}
+        </button>
+
         <div 
           style={cardStyle}
           onMouseEnter={() => setIsHovered(true)}
@@ -323,26 +439,33 @@ function App() {
               margin: '0 auto 16px',
               width: '64px',
               height: '64px',
-              backgroundColor: '#dcfce7',
+              backgroundColor: isDarkMode ? '#065f46' : '#dcfce7',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#16a34a'
+              color: isDarkMode ? '#6ee7b7' : '#16a34a'
             }}>
               <CheckCircleIcon />
             </div>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: '700', color: theme.textPrimary, marginBottom: '8px' }}>
               Welcome, {user.fullName}!
             </h1>
-            <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+            <p style={{ color: theme.textSecondary, marginBottom: '24px' }}>
               You have successfully logged in.
             </p>
-            <div style={{ backgroundColor: '#f9fafb', borderRadius: '8px', padding: '16px', marginBottom: '24px', textAlign: 'left' }}>
-              <p style={{ fontSize: '14px', color: '#374151', margin: '4px 0' }}>
+            <div style={{ 
+              backgroundColor: theme.inputBg, 
+              borderRadius: '8px', 
+              padding: '16px', 
+              marginBottom: '24px', 
+              textAlign: 'left',
+              border: `1px solid ${theme.inputBorder}`
+            }}>
+              <p style={{ fontSize: '14px', color: theme.textPrimary, margin: '4px 0' }}>
                 <strong>Email:</strong> {user.email}
               </p>
-              <p style={{ fontSize: '14px', color: '#374151', margin: '4px 0' }}>
+              <p style={{ fontSize: '14px', color: theme.textPrimary, margin: '4px 0' }}>
                 <strong>User ID:</strong> {user.id}
               </p>
             </div>
@@ -373,6 +496,16 @@ function App() {
 
   return (
     <div style={containerStyle}>
+      {/* Theme Toggle */}
+      <button
+        onClick={toggleDarkMode}
+        style={themeToggleStyle}
+        onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'}
+        onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+      >
+        {isDarkMode ? <SunIcon /> : <MoonIcon />}
+      </button>
+
       <div 
         style={cardStyle}
         onMouseEnter={() => setIsHovered(true)}
@@ -385,24 +518,24 @@ function App() {
               margin: '0 auto 16px',
               width: '64px',
               height: '64px',
-              backgroundColor: '#e0e7ff',
+              backgroundColor: isDarkMode ? '#312e81' : '#e0e7ff',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#4f46e5'
+              color: isDarkMode ? '#a5b4fc' : '#4f46e5'
             }}>
               <UserIcon />
             </div>
             <h2 style={{
               fontSize: '30px',
               fontWeight: 'bold',
-              color: '#1f2937',
+              color: theme.textPrimary,
               marginBottom: '8px'
             }}>
               {currentView === 'login' ? 'Welcome Back' : 'Create Account'}
             </h2>
-            <p style={{ color: '#6b7280', marginBottom: '0' }}>
+            <p style={{ color: theme.textSecondary, marginBottom: '0' }}>
               {currentView === 'login' ? 'Sign in to continue your journey 🚀' : 'Join us and start your journey today ✨'}
             </p>
           </div>
@@ -418,7 +551,7 @@ function App() {
                 marginBottom: '16px' 
               }}>
                 <div style={inputContainerStyle}>
-                  <div style={{ color: '#6b7280', marginRight: '8px' }}>
+                  <div style={{ color: theme.textSecondary, marginRight: '8px' }}>
                     <UserIcon />
                   </div>
                   <input
@@ -435,7 +568,7 @@ function App() {
                   />
                 </div>
                 <div style={inputContainerStyle}>
-                  <div style={{ color: '#6b7280', marginRight: '8px' }}>
+                  <div style={{ color: theme.textSecondary, marginRight: '8px' }}>
                     <UserIcon />
                   </div>
                   <input
@@ -456,7 +589,7 @@ function App() {
 
             {/* Email Input */}
             <div style={inputContainerStyle}>
-              <div style={{ color: '#6b7280', marginRight: '8px' }}>
+              <div style={{ color: theme.textSecondary, marginRight: '8px' }}>
                 <MailIcon />
               </div>
               <input
@@ -475,7 +608,7 @@ function App() {
 
             {/* Password Input */}
             <div style={inputContainerStyle}>
-              <div style={{ color: '#6b7280', marginRight: '8px' }}>
+              <div style={{ color: theme.textSecondary, marginRight: '8px' }}>
                 <LockIcon />
               </div>
               <input
@@ -495,7 +628,7 @@ function App() {
             {/* Confirm Password for Signup */}
             {currentView === 'signup' && (
               <div style={inputContainerStyle}>
-                <div style={{ color: '#6b7280', marginRight: '8px' }}>
+                <div style={{ color: theme.textSecondary, marginRight: '8px' }}>
                   <LockIcon />
                 </div>
                 <input
@@ -522,7 +655,12 @@ function App() {
                 marginBottom: '24px',
                 fontSize: '14px'
               }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  color: theme.textPrimary
+                }}>
                   <input type="checkbox" style={{ borderRadius: '4px' }} />
                   <span>Remember me</span>
                 </label>
@@ -542,9 +680,9 @@ function App() {
                 borderRadius: '8px',
                 fontSize: '14px',
                 marginBottom: '16px',
-                backgroundColor: messageType === 'success' ? '#f0fdf4' : '#fef2f2',
-                color: messageType === 'success' ? '#166534' : '#991b1b',
-                border: `1px solid ${messageType === 'success' ? '#bbf7d0' : '#fecaca'}`
+                backgroundColor: messageType === 'success' ? theme.successBg : theme.errorBg,
+                color: messageType === 'success' ? theme.successText : theme.errorText,
+                border: `1px solid ${messageType === 'success' ? theme.successBorder : theme.errorBorder}`
               }}>
                 {message}
               </div>
@@ -594,9 +732,9 @@ function App() {
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                <div style={{ flexGrow: 1, height: '1px', backgroundColor: '#d1d5db' }}></div>
-                <span style={{ color: '#6b7280', fontSize: '14px' }}>or continue with</span>
-                <div style={{ flexGrow: 1, height: '1px', backgroundColor: '#d1d5db' }}></div>
+                <div style={{ flexGrow: 1, height: '1px', backgroundColor: theme.inputBorder }}></div>
+                <span style={{ color: theme.textSecondary, fontSize: '14px' }}>or continue with</span>
+                <div style={{ flexGrow: 1, height: '1px', backgroundColor: theme.inputBorder }}></div>
               </div>
 
               <div style={{ display: 'flex', gap: '16px' }}>
@@ -605,11 +743,11 @@ function App() {
                   style={socialButtonStyle}
                   onMouseOver={(e) => {
                     e.target.style.transform = 'scale(1.05)';
-                    e.target.style.backgroundColor = '#f9fafb';
+                    e.target.style.backgroundColor = theme.socialHover;
                   }}
                   onMouseOut={(e) => {
                     e.target.style.transform = 'scale(1)';
-                    e.target.style.backgroundColor = 'white';
+                    e.target.style.backgroundColor = theme.socialBg;
                   }}
                 >
                   <GithubIcon /> Github
@@ -619,11 +757,11 @@ function App() {
                   style={socialButtonStyle}
                   onMouseOver={(e) => {
                     e.target.style.transform = 'scale(1.05)';
-                    e.target.style.backgroundColor = '#f9fafb';
+                    e.target.style.backgroundColor = theme.socialHover;
                   }}
                   onMouseOut={(e) => {
                     e.target.style.transform = 'scale(1)';
-                    e.target.style.backgroundColor = 'white';
+                    e.target.style.backgroundColor = theme.socialBg;
                   }}
                 >
                   <LinkedinIcon /> LinkedIn
@@ -636,7 +774,7 @@ function App() {
           <p style={{
             textAlign: 'center',
             fontSize: '14px',
-            color: '#6b7280',
+            color: theme.textSecondary,
             marginTop: '24px',
             marginBottom: '0'
           }}>
@@ -669,8 +807,12 @@ function App() {
         
         input:focus {
           outline: none !important;
-          border-color: #4f46e5 !important;
-          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+          border-color: ${theme.inputFocus} !important;
+          box-shadow: 0 0 0 3px ${isDarkMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(79, 70, 229, 0.1)'} !important;
+        }
+        
+        input::placeholder {
+          color: ${theme.textSecondary};
         }
         
         @media (max-width: 640px) {
